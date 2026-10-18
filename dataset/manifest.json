@@ -1,0 +1,31 @@
+{
+  "project": "AeroNet AI",
+  "dataset": "dataset/raw",
+  "generated_at": "2026-10-15T00:03:33.424231+00:00",
+  "classes": [
+    "bird",
+    "drone"
+  ],
+  "counts": {
+    "source_images_total": 60,
+    "source_images_valid": 60,
+    "annotation_previews_total": 60,
+    "class_bird": 5,
+    "class_drone": 55,
+    "total_bytes": 669498
+  },
+  "duplicate_groups": [
+    [
+      "drone/D1MQxxwmFrJTCHVugjRX_thumb.jpg",
+      "drone/ZiHeMassueIQzinrvjXP_thumb.jpg"
+    ]
+  ],
+  "annotation_preview_check": {
+    "verified": true,
+    "contains_geometry": false,
+    "note": "Previews are tiny RGBA raster previews; no bounding-box coordinates are present.",
+    "previews_decoded": 0,
+    "previews_with_geometry": 0
+  },
+  "preparation_status": "image-level labels only; no detection bounding boxes available"
+}

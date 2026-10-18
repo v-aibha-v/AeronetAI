@@ -1,0 +1,30 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Large Datasets & Splits (kept locally; the small bundled dataset is part of the project)
+split/
+
+# Node & Frontend build remnants
+node_modules/
+.vite/
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Ultralytics runtime
+runs/
+
+# Temporary and log files
+*.log
+scratch/

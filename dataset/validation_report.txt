@@ -1,0 +1,96 @@
+========================================================================
+AERONET AI -- DATASET VALIDATION REPORT
+========================================================================
+Generated (UTC): 2026-10-15T00:03:33.043903+00:00
+Platform       : Windows-11-10.0.26200-SP0
+Python         : 3.12.0
+Dataset dir    : C:\Users\vaibh\Desktop\aeronet_ai\dataset\raw
+
+SOURCE IMAGES
+------------------------------------------------------------------------
+rel_path                                                class        w     h valid       bytes status  
+------------------------------------------------------------------------
+bird/bVUz6DY3rwNedSeIhUYz_thumb.jpg                     bird       200   150 True         5967 ready   
+bird/IK6Iobe9feRyvA3lu2Pv_thumb.jpg                     bird       200   178 True         7495 ready   
+bird/p9qqIsvnoaTZQp3J6RDd_thumb.jpg                     bird       150   200 True        10161 ready   
+bird/uQsW5g0BdaZbnfk321Ii_thumb.jpg                     bird       133   200 True         1991 ready   
+bird/ZHp4wQWnxYDQ43wtS8mQ_thumb.jpg                     bird       200   147 True         5555 ready   
+drone/02UGnp62CNgwgW5dHGcR_thumb.jpg                    drone      200   114 True        11805 ready   
+drone/09IETOga87YNClx7Qmb9_thumb.jpg                    drone      200   113 True        10766 ready   
+drone/0ipqzinLL32gygbYhMYl_thumb.jpg                    drone      200   114 True        16701 ready   
+drone/0VWNadkj0Z7vyJg50Wgj_thumb.jpg                    drone      200   122 True         8026 ready   
+drone/0WuApOdXlJoe3UTY8xVK_thumb.jpg                    drone      200   114 True        16946 ready   
+drone/18QBsNh65NehZp5wPaXS_thumb.jpg                    drone      200   114 True        12395 ready   
+drone/29Zo70sigsMFLCTisfJS_thumb.jpg                    drone      200   113 True        14921 ready   
+drone/3AHxz1PmLJC0sivzWCwe_thumb.jpg                    drone      200   114 True        15795 ready   
+drone/3GkELJ2cp1koYnwEk3Vn_thumb.jpg                    drone      200   113 True        10898 ready   
+drone/3KdmECrlP28WjPisiWF5_thumb.jpg                    drone      200   133 True        16390 ready   
+drone/3OhTOPR2val3R4TW9CUg_thumb.jpg                    drone      200   114 True        17811 ready   
+drone/51zFq8V60nBxKgN0vchB_thumb.jpg                    drone      200   113 True        12136 ready   
+drone/69e4Zwg6yJTdBiUiCmDS_thumb.jpg                    drone      200   114 True        13052 ready   
+drone/7eD958r6hW7ANqbyQeEH_thumb.jpg                    drone      200   114 True        12811 ready   
+drone/9uP3QRbO5jPK25pI21ad_thumb.jpg                    drone      200   114 True        13087 ready   
+drone/AcFesWMRvRzwa9MCTk7v_thumb.jpg                    drone      200   114 True         9363 ready   
+drone/B2tZAFXIiWP97draqqvf_thumb.jpg                    drone      200   114 True        10671 ready   
+drone/BHundY5X363ZJbt8on8W_thumb.jpg                    drone      200   133 True        11716 ready   
+drone/C9VzrI9TcxvM2IgDA10D_thumb.jpg                    drone      200   113 True        11211 ready   
+drone/CgrejNBl3Ou71pgCtojz_thumb.jpg                    drone      200   113 True        10878 ready   
+drone/CmqCmjuG4vJT1yTFBnna_thumb.jpg                    drone      200   113 True        11248 ready   
+drone/D1MQxxwmFrJTCHVugjRX_thumb.jpg                    drone      200   120 True         6782 ready   
+drone/D7PyJGGVAh13v8gZWU98_thumb.jpg                    drone      200   133 True        14653 ready   
+drone/dIUWdS3BjYUfRgnVjZzt_thumb.jpg                    drone      200   114 True        12916 ready   
+drone/Ea0TJUvXod8BHvId0pTp_thumb.jpg                    drone      200   113 True        11222 ready   
+drone/eeUEVRdZsPo8ccwZSfVR_thumb.jpg                    drone      200   113 True        10808 ready   
+drone/esrVEHjMMkzag5o4a2yD_thumb.jpg                    drone      200   113 True        10552 ready   
+drone/eX0yDgJZzYmmsfH1lhQ2_thumb.jpg                    drone      200   113 True        11128 ready   
+drone/HRMUcJp34gwx1AKXfkYz_thumb.jpg                    drone      200   114 True        12337 ready   
+drone/HZo6x7Ckhm5HNnGZ0rMy_thumb.jpg                    drone      200   150 True        14857 ready   
+drone/I2z6d5j2h1wuTrx50Pzj_thumb.jpg                    drone      200   114 True        11644 ready   
+drone/IkaFDIZrNTtmAre8ayqB_thumb.jpg                    drone      200   114 True         6249 ready   
+drone/iSGbJowvxoeHncyQuqO6_thumb.jpg                    drone      200   114 True        13904 ready   
+drone/LaxCtCz4clRoLANwu9fS_thumb.jpg                    drone      200   113 True        11172 ready   
+drone/LOlF6m4a2U7r9L0RS7aF_thumb.jpg                    drone      200   113 True        11158 ready   
+drone/mv2fuHyJyHaJVEeR0gkM_thumb.jpg                    drone      200   114 True        16425 ready   
+drone/oMLQtHVczNnQX5gcL8Jg_thumb.jpg                    drone      200   113 True        10537 ready   
+drone/P3y8JfBxWyefhJjhohqh_thumb.jpg                    drone      200   113 True        11046 ready   
+drone/PjiGp5Wj5dQwu4uppRIb_thumb.jpg                    drone      200    89 True         6885 ready   
+drone/QcdfABoAEQAwJXzGlDOx_thumb.jpg                    drone      200   113 True        11074 ready   
+drone/QG31vxshs0Vh9Y337hZ4_thumb.jpg                    drone      200   113 True        10786 ready   
+drone/qNonn2SX1Y4UGPWScBqG_thumb.jpg                    drone      200   114 True        11905 ready   
+drone/rl5kdQCxQrkKM5i2gOg3_thumb.jpg                    drone      200   114 True        11750 ready   
+drone/TQtFP9JxkYqvbVP1BsDl_thumb.jpg                    drone      200   114 True        10012 ready   
+drone/U8V40ycM1Jaj2FKkHsq7_thumb.jpg                    drone      200   114 True        15720 ready   
+drone/UEfTgXyRjhUcpYdIf38Q_thumb.jpg                    drone      200   114 True        14014 ready   
+drone/uJ0hl0zsVVWiIvdRQvI3_thumb.jpg                    drone      200   133 True        12685 ready   
+drone/UsZiWNnMg26BgeXKBjN6_thumb.jpg                    drone      200   114 True         8101 ready   
+drone/W42XyTCmyXkpL7tQPVPT_thumb.jpg                    drone      200   114 True        14674 ready   
+drone/WgAKQZ8vLE6dORqa54yq_thumb.jpg                    drone      200   113 True         9843 ready   
+drone/YJLjAKPD8H3AFDbtPT0D_thumb.jpg                    drone      200   113 True        10569 ready   
+drone/z5U7Qvo0ZayvtKwlAT0n_thumb.jpg                    drone      200   113 True         1435 ready   
+drone/ZiHeMassueIQzinrvjXP_thumb.jpg                    drone      200   120 True         6782 ready   
+drone/zocyvh8pRoAfFm0Xgi9N_thumb.jpg                    drone      200   114 True        12905 ready   
+drone/zTyZVyEV5hXE4qDR0Tsj_thumb.jpg                    drone      200   200 True         3172 ready   
+
+ANNOTATION PREVIEWS
+------------------------------------------------------------------------
+Annotation preview files found        : 60
+Annotation previews contain box geometry: NO (raster previews only)
+
+DUPLICATES
+------------------------------------------------------------------------
+  group: drone/D1MQxxwmFrJTCHVugjRX_thumb.jpg, drone/ZiHeMassueIQzinrvjXP_thumb.jpg
+
+VALIDATION FLAGS
+------------------------------------------------------------------------
+  images_valid: 60
+  images_invalid: 0
+  annotation_previews_parsed: 60
+  duplicate_groups_found: 1
+  has_bounding_box_labels: False
+  label_type: image-level class labels
+
+LIMITATION
+------------------------------------------------------------------------
+  Source images carry image-level class labels only. There are no measur-
+  able bounding-box annotations, so custom object-detection training is
+  not scientifically justified with this dataset.

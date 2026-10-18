@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroNet AI -- Bird vs Drone Image Classification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0f18;
+            --bg-accent: #111a28;
+            --panel-bg: rgba(22, 27, 40, 0.65);
+            --panel-border: rgba(144, 202, 249, 0.12);
+            --text-main: #f0f4f8;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.4);
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bird-color: #10b981;
+            --drone-color: #ef4444;
+            --uncertain-color: #f59e0b;
+            --error-color: #ef4444;
+            --neon-shadow: 0 0 20px var(--primary-glow);
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 35% -20% -55%;
+            z-index: -2;
+            pointer-events: none;
+            background:
+                linear-gradient(rgba(96, 165, 250, 0.09) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(96, 165, 250, 0.09) 1px, transparent 1px);
+            background-size: 54px 54px;
+            mask-image: linear-gradient(to bottom, transparent, #000 28%, transparent 88%);
+            transform: perspective(700px) rotateX(62deg) translateY(-8%);
+            transform-origin: center top;
+        }
+
+        .ambient-blob {
+            position: fixed; border-radius: 50%; filter: blur(100px); z-index: -1;
+            opacity: 0.5; animation: float 20s infinite ease-in-out alternate;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: rgba(59,130,246,0.1); }
+        .blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: rgba(99,102,241,0.08); }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, -50px) scale(1.1); }
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 24px;
+            padding: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+            min-height: 100vh;
+            perspective: 1600px;
+            transform-style: preserve-3d;
+        }
+        @media (max-width: 1024px) {
+            .container { grid-template-columns: 1fr !important; }
+            .sidebar { position: relative !important; top: 0 !important; height: auto !important; padding-bottom: 12px; }
+        }
+
+        .glass-card {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            background:
+                linear-gradient(145deg, rgba(38, 52, 76, 0.52), rgba(11, 17, 29, 0.76)),
+                var(--panel-bg);
+            -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+            border: 1px solid rgba(148, 190, 255, 0.2);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow:
+                0 2px 0 rgba(255,255,255,0.07) inset,
+                0 -1px 0 rgba(0,0,0,0.3) inset,
+                0 12px 24px rgba(0,0,0,0.28),
+                0 28px 60px rgba(0,0,0,0.2);
+            transform: translateZ(0);
+            transform-style: preserve-3d;
+            transition: transform 0.35s cubic-bezier(0.2, 0.75, 0.25, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+        }
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                linear-gradient(125deg, rgba(255,255,255,0.09), transparent 28%),
+                radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.12), transparent 65%);
+            opacity: 0.8;
+        }
+        .glass-card:hover {
+            border-color: rgba(96, 165, 250, 0.4);
+            box-shadow:
+                0 2px 0 rgba(255,255,255,0.1) inset,
+                0 -1px 0 rgba(0,0,0,0.3) inset,
+                0 18px 32px rgba(0,0,0,0.34),
+                0 34px 70px rgba(0,0,0,0.24),
+                0 0 28px rgba(59,130,246,0.12);
+            transform: translateY(-5px) rotateX(1.2deg) rotateY(-0.6deg) translateZ(8px);
+        }
+
+        .header { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+        .header h1 {
+            width: fit-content;
+            font-size: clamp(2rem, 4vw, 3.3rem);
+            letter-spacing: -1.5px;
+            color: #f5f9ff;
+            text-shadow:
+                0 1px 0 #a9c9ff,
+                0 2px 0 #6686bd,
+                0 3px 0 #38537f,
+                0 7px 18px rgba(59,130,246,0.42);
+            transform: translateZ(36px);
+        }
+        .header .tagline { color: var(--text-muted); font-size: 0.95rem; }
+
+        .sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px; }
+        .main { display: grid; grid-template-columns: 1fr; gap: 24px; }
+
+        h2 { font-size: 1.1rem; margin-bottom: 12px; }
+        h3 { font-size: 0.95rem; margin: 10px 0 8px; color: var(--text-muted); }
+
+        .upload-panel { display: flex; flex-direction: column; gap: 14px; }
+        .drop-zone {
+            border: 2px dashed var(--panel-border); border-radius: 20px; padding: 26px 20px;
+            text-align: center; cursor: pointer; transition: var(--transition); background: rgba(0,0,0,0.2);
+            box-shadow: 0 8px 18px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.06) inset;
+            transform: translateZ(12px);
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(59,130,246,0.1);
+            box-shadow: 0 14px 28px rgba(0,0,0,0.3), 0 0 24px rgba(59,130,246,0.12);
+            transform: translateY(-3px) translateZ(20px) rotateX(2deg);
+        }
+        .drop-zone input { display: none; }
+        .dz-hint { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 4px; }
+        .dz-ext { color: var(--text-muted); font-size: 0.8rem; font-family: monospace; }
+
+        .preview-box {
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            overflow: hidden;
+            background: linear-gradient(145deg, #111a29, #03060c);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.32), 0 1px 0 rgba(255,255,255,0.08) inset;
+            transform: translateZ(8px);
+        }
+        .preview-box img { width: 100%; height: auto; display: block; max-height: 260px; object-fit: contain; }
+        .preview-empty { color: var(--text-muted); font-size: 0.85rem; padding: 30px 10px; text-align: center; }
+
+        button {
+            border: none; border-radius: 12px; padding: 12px 18px; font-weight: 600;
+            font-size: 0.95rem; cursor: pointer; transition: var(--transition);
+            transform: translateZ(8px);
+            box-shadow: 0 5px 0 rgba(0,0,0,0.25), 0 10px 18px rgba(0,0,0,0.2);
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: #2563eb; box-shadow: var(--neon-shadow), 0 5px 0 rgba(0,0,0,0.22); transform: translateY(-2px) translateZ(12px); }
+        .btn-outline { background: transparent; color: var(--text-main); border: 1px solid var(--panel-border); }
+        .btn-outline:hover:not(:disabled) { border-color: var(--primary); }
+        button:active:not(:disabled) { transform: translateY(2px) translateZ(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+        .btn-small { padding: 8px 12px; font-size: 0.85rem; }
+
+        .msg { padding: 10px 14px; border-radius: 12px; font-size: 0.85rem; display: none; }
+        .msg.error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+        .msg.info { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #bfdbfe; }
+
+        .model-status { font-size: 0.8rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+        .status-ok { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+        .status-error { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+        .status-unavailable { background: rgba(148,163,184,0.15); color: var(--text-muted); border: 1px solid rgba(148,163,184,0.3); }
+
+        .result-row { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+        @media (max-width: 768px) { .result-row { grid-template-columns: 1fr; } }
+        .model-card { display: flex; flex-direction: column; gap: 8px; }
+        .prob-item { margin: 6px 0; }
+        .prob-item-header { display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 3px; color: var(--text-muted); }
+        .pct-val { font-variant-numeric: tabular-nums; }
+        .prob-bar-bg { height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+        .prob-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+        .model-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; perspective: 1000px; }
+        .model-card { min-height: 100%; }
+        .final-card { transform: translateZ(10px); }
+        #evalTableWrap { transform: translateZ(6px); }
+        #evalTableWrap table { width: 100%; border-collapse: collapse; font-size: 0.82rem; border-radius: 12px; overflow: hidden; }
+        #evalTableWrap th { text-align: left; color: var(--text-muted); padding: 10px 8px; border-bottom: 1px solid var(--panel-border); text-shadow: 0 1px 8px rgba(96,165,250,0.2); white-space: nowrap; }
+        #evalTableWrap td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        #evalTableWrap tbody tr { transition: background 0.2s ease, transform 0.2s ease; }
+        #evalTableWrap tbody tr:hover { background: rgba(59,130,246,0.07); }
+
+        /* metric bars + gauge */
+        .mbar span { font-variant-numeric: tabular-nums; }
+        .mbar i { display: block; height: 4px; margin-top: 5px; min-width: 70px; border-radius: 3px; background: rgba(255,255,255,0.08); position: relative; overflow: hidden; }
+        .mbar i::after { content: ""; position: absolute; inset: 0; width: var(--w); border-radius: 3px; background: linear-gradient(90deg, #3b82f6, #60a5fa); animation: grow 1s cubic-bezier(.2,.8,.2,1) backwards; transform-origin: left; }
+        .mbar.best span { color: var(--success); font-weight: 700; }
+        .mbar.best i::after { background: linear-gradient(90deg, #059669, #34d399); box-shadow: 0 0 10px rgba(52,211,153,.6); }
+        .gauge { width: 96px; height: 96px; filter: drop-shadow(0 6px 14px rgba(0,0,0,.45)); }
+        .gauge .g-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 7; }
+        .gauge .g-fg { fill: none; stroke-width: 7; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 42px 42px; stroke-dashoffset: var(--off); animation: gauge 1.3s cubic-bezier(.2,.8,.2,1) backwards; filter: drop-shadow(0 0 6px currentColor); }
+        .gauge text { fill: #f0f4f8; font-size: 18px; font-weight: 700; }
+        @keyframes gauge { from { stroke-dashoffset: 214; } }
+
+        /* HUD brackets around analysed image */
+        .result-image { position: relative; padding: 10px; }
+        .result-image::before {
+            content: ""; position: absolute; inset: 0; pointer-events: none; animation: hud 2.4s ease-in-out infinite;
+            background:
+                linear-gradient(#60a5fa,#60a5fa) top left/20px 2px no-repeat, linear-gradient(#60a5fa,#60a5fa) top left/2px 20px no-repeat,
+                linear-gradient(#60a5fa,#60a5fa) top right/20px 2px no-repeat, linear-gradient(#60a5fa,#60a5fa) top right/2px 20px no-repeat,
+                linear-gradient(#60a5fa,#60a5fa) bottom left/20px 2px no-repeat, linear-gradient(#60a5fa,#60a5fa) bottom left/2px 20px no-repeat,
+                linear-gradient(#60a5fa,#60a5fa) bottom right/20px 2px no-repeat, linear-gradient(#60a5fa,#60a5fa) bottom right/2px 20px no-repeat;
+        }
+        @keyframes hud { 50% { opacity: .45; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
+            .glass-card:hover, .drop-zone:hover, .drop-zone.dragover {
+                transform: none;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="ambient-blob blob-1"></div>
+    <div class="ambient-blob blob-2"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>AeroNet AI</h1>
+            <div class="tagline">Bird vs Drone &mdash; multi-model image classification</div>
+        </div>
+
+        <aside class="sidebar">
+            <div class="glass-card upload-panel">
+                <h2>1. Upload image</h2>
+                <div id="msg-upload" class="msg error"></div>
+                <label class="drop-zone" id="dropZone">
+                    <div style="font-size:2rem;margin-bottom:10px;opacity:0.6">&#128247;</div>
+                    <div class="dz-hint">Choose a JPG, JPEG or PNG image</div>
+                    <div class="dz-ext">.jpg &bull; .jpeg &bull; .png &bull; max 16 MiB</div>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png">
+                </label>
+                <div class="preview-box" id="previewBox">
+                    <div class="preview-empty" id="previewEmpty">No image selected</div>
+                    <img id="previewImg" style="display:none">
+                </div>
+                <button id="btnAnalyze" class="btn-primary" disabled>2. Analyze image</button>
+            </div>
+
+            <div class="glass-card">
+                <h3>Model status</h3>
+                <div id="modelStatus">Loading model status&hellip;</div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <!-- Results panel -->
+            <section class="glass-card" id="resultsPanel" style="display:none">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                    <h2>Analysis result</h2>
+                    <button id="btnReset" class="btn-outline btn-small">New image</button>
+                </div>
+                <div id="msg-result" class="msg error"></div>
+                <div class="result-row">
+                    <div class="result-image">
+                        <img id="res-img" style="max-width:100%; border-radius:12px; border:1px solid var(--panel-border); background:#050810;">
+                    </div>
+                    <div id="finalCard" class="final-card"></div>
+                </div>
+                <h3>Per-model results</h3>
+                <div class="model-cards" id="modelCards"></div>
+            </section>
+
+            <!-- Evaluation dashboard -->
+            <section class="glass-card">
+                <h2>Model performance comparison</h2>
+                <div id="eval-message" class="msg info"></div>
+                <div id="evalPanel">
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;">
+                        Held-out test-set metrics.
+                    </p>
+                    <div id="evalTableWrap"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        "use strict";
+
+        const $ = (id) => document.getElementById(id);
+        const isNum = (v) => typeof v === "number" && Number.isFinite(v);
+        const asText = (v, fallback = "-") => v == null || v === "" ? fallback : String(v);
+        const asPct = (v) => isNum(v) ? (v * 100).toFixed(1) + "%" : "N/A";
+
+        const CLASS_COLORS = { bird: "var(--bird-color)", drone: "var(--drone-color)", uncertain: "var(--warning)", error: "var(--danger)" };
+
+        // ------------------------------------------------------------------
+        // Upload handling
+        // ------------------------------------------------------------------
+        const fileInput = $("fileInput");
+        const dropZone = $("dropZone");
+        const previewEmpty = $("previewEmpty");
+        const previewImg = $("previewImg");
+        const btnAnalyze = $("btnAnalyze");
+        const msgUpload = $("msg-upload");
+        let selectedFile = null;
+
+        function showUploadError(text) { msgUpload.textContent = text; msgUpload.style.display = "block"; }
+        function hideUploadError() { msgUpload.style.display = "none"; }
+
+        function setPreview(src) {
+            previewEmpty.style.display = "none";
+            previewImg.src = src;
+            previewImg.style.display = "block";
+        }
+
+        function clearPreview() {
+            selectedFile = null;
+            btnAnalyze.disabled = true;
+            previewEmpty.style.display = "block";
+            previewImg.style.display = "none";
+            previewImg.src = "";
+            hideUploadError();
+        }
+
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) { clearPreview(); return; }
+            if (!/\.(jpg|jpeg|png)$/i.test(file.name)) {
+                showUploadError("Please select a JPG, JPEG or PNG image.");
+                clearPreview();
+                return;
+            }
+            if (file.size > 16 * 1024 * 1024) {
+                showUploadError("File too large. Max 16 MiB.");
+                clearPreview();
+                return;
+            }
+            selectedFile = file;
+            setPreview(URL.createObjectURL(file));
+            btnAnalyze.disabled = false;
+            hideUploadError();
+        });
+
+        dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
+        dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault(); dropZone.classList.remove("dragover");
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event("change"));
+        });
+
+        btnAnalyze.addEventListener("click", () => {
+            if (!selectedFile) return;
+            analyzeFile(selectedFile);
+        });
+
+        async function analyzeFile(file) {
+            $("resultsPanel").style.display = "none";
+            $("msg-result").style.display = "none";
+
+            const fd = new FormData();
+            fd.append("image", file);
+
+            try {
+                const resp = await fetch("/api/detect", { method: "POST", body: fd });
+                let data;
+                try { data = await resp.json(); } catch (e) {
+                    showResultError("API returned an invalid response.");
+                    return;
+                }
+                if (!resp.ok || data.error) {
+                    showResultError(data.error || `Request failed (HTTP ${resp.status}).`);
+                    return;
+                }
+                showResults(data);
+            } catch (e) {
+                showResultError("Could not reach the classification API. Is the backend running?");
+            }
+        }
+
+        function showResultError(text) {
+            const msgResult = $("msg-result");
+            msgResult.textContent = text;
+            msgResult.style.display = "block";
+            $("resultsPanel").style.display = "block";
+        }
+
+        function statusBadge(status) {
+            const map = { ok: "status-ok", error: "status-error", unavailable: "status-unavailable" };
+            const cls = map[status] || "status-unavailable";
+            const label = status === "ok" ? "Available" : (status === "error" ? "Error" : "Unavailable");
+            return `<span class="model-status ${cls}">${label}</span>`;
+        }
+
+        function probBarHtml(label, prob) {
+            if (!isNum(prob)) {
+                return `<div class="prob-item"><div class="prob-item-header"><span>${label.toUpperCase()}</span><span class="pct-val">N/A</span></div></div>`;
+            }
+            const pct = prob * 100;
+            const color = CLASS_COLORS[label] || "var(--text-muted)";
+            return `
+                <div class="prob-item">
+                    <div class="prob-item-header"><span>${label.toUpperCase()}</span><span class="pct-val">${pct.toFixed(1)}%</span></div>
+                    <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${pct}%; background:${color}"></div></div>
+                </div>`;
+        }
+
+        function renderModelCard(modelKey, title, result) {
+            const host = $("modelCards");
+            const card = document.createElement("div");
+            card.className = "glass-card model-card";
+            const status = result && result.status || "error";
+            const pred = result && result.predicted_class;
+            const probs = (result && (result.probabilities || result.class_scores)) || {};
+            const tMs = isNum(result && result.inference_time_ms) ? result.inference_time_ms : null;
+            const err = result && result.error ? `<div style="margin-top:8px;font-size:0.75rem;color:#fca5a5">${asText(result.error)}</div>` : "";
+            // status badge only shown when something is wrong (healthy status lives in the sidebar)
+            const badge = status === "ok" ? "" : `<div style="font-size:0.75rem;margin-top:2px">${statusBadge(status)}</div>`;
+
+            card.innerHTML = `
+                <div style="margin-bottom:8px;">
+                    <div style="font-size:0.85rem;font-weight:600">${asText(title)}</div>
+                    ${badge}
+                </div>
+                <div style="font-size:1.25rem;font-weight:700;margin:6px 0 2px">${pred == null ? "&mdash;" : String(pred).toUpperCase()}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px">${tMs == null ? "inference time: n/a" : `inference time: ${tMs.toFixed(1)} ms`}</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">Class scores</div>
+                ${["bird", "drone"].map(name => probBarHtml(name, probs[name])).join("")}
+                ${err}
+            `;
+            host.appendChild(card);
+        }
+
+        function renderFinalCard(combined) {
+            const host = $("finalCard");
+            const decision = combined && combined.final_prediction;
+            const agreement = combined && combined.agreement_status;
+            const reason = combined && combined.decision_reason;
+            const confidence = combined && combined.confidence;
+            const err = combined && combined.error;
+
+            const color = decision ? (CLASS_COLORS[decision] || "var(--text-muted)") : "var(--text-muted)";
+            const agreementLabel = {
+                agree: "Available models agree",
+                disagree: "Models disagree",
+                single_model: "Single model available",
+                error: "No model returned a result",
+            }[agreement] || "Unknown";
+
+            let verdictHtml;
+            if (err) {
+                verdictHtml = `<div style="color:var(--danger);font-weight:700">Coordinator error</div>
+                    <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">${asText(err)}</div>`;
+            } else if (!decision) {
+                verdictHtml = `<div style="color:var(--text-muted)">No verdict</div>`;
+            } else if (isNum(confidence)) {
+                const C = 2 * Math.PI * 34, c = Math.max(0, Math.min(1, confidence));
+                verdictHtml = `
+                    <div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap">
+                        <svg class="gauge" viewBox="0 0 84 84" style="color:${color}">
+                            <circle class="g-bg" cx="42" cy="42" r="34"/>
+                            <circle class="g-fg" cx="42" cy="42" r="34" style="stroke:${color};stroke-dasharray:${C.toFixed(2)};--off:${(C * (1 - c)).toFixed(2)}"/>
+                            <text x="42" y="48" text-anchor="middle">${(c * 100).toFixed(0)}%</text>
+                        </svg>
+                        <div style="text-align:left">
+                            <div style="color:${color};font-weight:800;font-size:1.8rem;letter-spacing:1px">${String(decision).toUpperCase()}</div>
+                            <div style="font-size:0.8rem;color:var(--text-muted)">Confidence: ${asPct(confidence)}</div>
+                        </div>
+                    </div>`;
+            } else {
+                verdictHtml = `
+                    <div style="color:${color};font-weight:800;font-size:1.8rem;letter-spacing:1px">${String(decision).toUpperCase()}</div>
+                    <div style="font-size:0.85rem;color:var(--text-muted);margin-top:4px">Confidence: N/A</div>`;
+            }
+
+            host.innerHTML = `
+                <div style="--vc:${color};border:1px solid var(--panel-border);border-radius:16px;padding:18px;background:rgba(0,0,0,0.35);text-align:center;">
+                    <div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Coordinator decision</div>
+                    ${verdictHtml}
+                    <div style="margin-top:12px;border-top:1px solid var(--panel-border);padding-top:10px;">
+                        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">${agreementLabel}</div>
+                        <div style="font-size:0.85rem">${asText(reason || "&mdash;")}</div>
+                    </div>
+                </div>`;
+        }
+
+        function showResults(data) {
+            $("resultsPanel").style.display = "block";
+            $("msg-result").style.display = "none";
+
+            const uploaded = data && data.uploaded_image;
+            const imgEl = $("res-img");
+            imgEl.style.display = uploaded ? "block" : "none";
+            if (uploaded) imgEl.src = uploaded;
+
+            const models = (data && data.models) || {};
+            const agentCards = [
+                ["resnet18", "Model A &mdash; ResNet-18"],
+                ["mobilenetv3", "Model B &mdash; MobileNetV3"],
+                ["efficientnetb0", "Model C &mdash; EfficientNet-B0"],
+            ];
+            $("modelCards").innerHTML = "";
+            for (const [key, title] of agentCards) renderModelCard(key, title, models[key] || {});
+
+            renderFinalCard(data && data.result);
+        }
+
+        $("btnReset").addEventListener("click", () => {
+            $("resultsPanel").style.display = "none";
+            clearPreview();
+        });
+
+        // ------------------------------------------------------------------
+        // Model status bar
+        // ------------------------------------------------------------------
+        async function fetchModelStatus() {
+            try {
+                const resp = await fetch("/api/models");
+                const state = await resp.json();
+                const box = $("modelStatus");
+                const rows = [];
+                for (const [key, m] of Object.entries(state || {})) {
+                    const cls = m.status === "ok" ? "status-ok" : (m.status === "error" ? "status-error" : "status-unavailable");
+                    rows.push(`<div style="display:flex;justify-content:space-between;gap:10px;margin:6px 0;font-size:0.85rem;">
+                        <span>${asText(m.name || key)}</span>
+                        <span class="model-status ${cls}">${m.status === "ok" ? "available" : (m.status === "error" ? "error" : "unavailable")}</span>
+                    </div>${m.note ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-left:2px">${asText(m.note)}</div>` : ""}`);
+                }
+                box.innerHTML = rows.join("") || "<div style='color:var(--text-muted);font-size:0.8rem'>no status</div>";
+            } catch (e) {
+                $("modelStatus").textContent = "Status unavailable";
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Evaluation dashboard (simplified)
+        // ------------------------------------------------------------------
+        function fmtMetric(block, key, fallback = "&mdash;") {
+            if (!block || !isNum(block[key])) return fallback;
+            return key === "avg_inference_time_ms" ? block[key].toFixed(2) + " ms" : block[key].toFixed(3);
+        }
+
+        // metric value + progress bar; the best value in the column is highlighted
+        function barCell(block, key, best) {
+            if (!block || !isNum(block[key])) return "&mdash;";
+            const v = block[key];
+            const pct = Math.max(0, Math.min(1, v)) * 100;
+            return `<div class="mbar${v === best ? " best" : ""}"><span>${v.toFixed(3)}</span><i style="--w:${pct.toFixed(1)}%"></i></div>`;
+        }
+
+        async function renderEvaluation() {
+            const wrap = $("evalTableWrap");
+            const msgEl = $("eval-message");
+            try {
+                const resp = await fetch("/api/evaluation");
+                if (resp.status === 404) {
+                    const body = await resp.json();
+                    msgEl.textContent = body.message || "Evaluation metrics not available yet.";
+                    msgEl.style.display = "block";
+                    wrap.innerHTML = "<div style='color:var(--text-muted);font-size:0.85rem'>Train the models to compute metrics.</div>";
+                    return;
+                }
+                const report = await resp.json();
+                const models = report && report.models || {};
+                const order = [
+                    ["resnet18", "Model A &mdash; ResNet-18"],
+                    ["mobilenetv3", "Model B &mdash; MobileNetV3"],
+                    ["efficientnetb0", "Model C &mdash; EfficientNet-B0"],
+                    ["logistic_regression_baseline", "Baseline &mdash; Logistic Regression"],
+                    ["combined_coordinator", "Combined coordinator"],
+                ];
+                const bestOf = (key) => {
+                    const vals = order.map(([k]) => models[k]).filter((b) => b && isNum(b[key])).map((b) => b[key]);
+                    return vals.length ? Math.max(...vals) : null;
+                };
+                const best = { accuracy: bestOf("accuracy"), precision: bestOf("precision"), recall: bestOf("recall"), macro_f1: bestOf("macro_f1") };
+
+                let html = `<div style="overflow-x:auto"><table>
+                    <thead><tr>
+                        <th>Model</th><th>Accuracy</th><th>Precision (drone)</th><th>Recall (drone)</th><th>Macro F1</th>
+                        <th>Avg inference</th><th>Test samples</th><th>Coverage</th><th>Uncertain / failures</th>
+                    </tr></thead><tbody>`;
+                for (const [key, label] of order) {
+                    const block = models[key];
+                    const available = block && block.available !== false;
+                    const unc = block && isNum(block.uncertain_predictions) ? block.uncertain_predictions : "&mdash;";
+                    const fail = block && isNum(block.failed_predictions) ? block.failed_predictions : "&mdash;";
+                    const hasUF = block && (isNum(block.uncertain_predictions) || isNum(block.failed_predictions));
+                    html += `<tr>
+                        <td>${asText(label)}${available ? "" : " <span style='color:var(--text-muted);font-size:0.7rem'>(unavailable)</span>"}</td>
+                        <td>${barCell(block, "accuracy", best.accuracy)}</td>
+                        <td>${barCell(block, "precision", best.precision)}</td>
+                        <td>${barCell(block, "recall", best.recall)}</td>
+                        <td>${barCell(block, "macro_f1", best.macro_f1)}</td>
+                        <td>${fmtMetric(block, "avg_inference_time_ms")}</td>
+                        <td>${block && isNum(block.samples) ? block.samples : "&mdash;"}</td>
+                        <td>${fmtMetric(block, "coverage")}</td>
+                        <td>${hasUF ? `${unc} / ${fail}` : "&mdash;"}</td>
+                    </tr>`;
+                }
+                html += `</tbody></table></div>`;
+                wrap.innerHTML = html;
+            } catch (e) {
+                msgEl.textContent = "Could not load evaluation metrics.";
+                msgEl.style.display = "block";
+                wrap.innerHTML = "";
+            }
+        }
+
+        fetchModelStatus();
+        renderEvaluation();
+    </script>
+
+    <!-- ================= 3D LAYER (CSS) ================= -->
+    <style>
+    #bg3d{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+
+    .glass-card{overflow:visible;--rx:0deg;--ry:0deg;--mx:50%;--my:0%;
+      animation:rise .9s cubic-bezier(.2,.8,.2,1) backwards}
+    .glass-card::before{border-radius:inherit}
+    .glass-card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+      background:radial-gradient(circle at var(--mx) var(--my),rgba(255,255,255,.16),transparent 45%);transition:opacity .3s}
+    .glass-card:hover{transition:transform .12s ease-out,box-shadow .35s,border-color .35s;
+      transform:perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry)) translateZ(16px)}
+    .glass-card:hover::after{opacity:1}
+    .glass-card>h2,.glass-card>h3{transform:translateZ(26px)}
+    .final-card>div,.model-card>div:first-child,.result-image img{transform:translateZ(30px)}
+    .main>.glass-card,.sidebar>.glass-card{transform-style:preserve-3d}
+
+    @keyframes rise{from{opacity:0;transform:perspective(1000px) rotateX(24deg) translateY(60px) translateZ(-120px) scale(.94)}}
+    .sidebar>.glass-card:nth-child(2){animation-delay:.12s}
+    .main>.glass-card{animation-delay:.2s}
+    .model-card:nth-child(2){animation-delay:.12s}.model-card:nth-child(3){animation-delay:.24s}
+
+    .header h1{background:linear-gradient(100deg,#f5f9ff 30%,#7db2ff 50%,#f5f9ff 70%) 0 0/250% 100%;
+      -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 6px 14px rgba(59,130,246,.45));
+      text-shadow:none;animation:bob 6s ease-in-out infinite,shine 7s linear infinite}
+    @keyframes bob{50%{transform:translateZ(36px) translateY(-6px) rotateX(4deg)}}
+    @keyframes shine{to{background-position:-250% 0}}
+
+    .drop-zone>div:first-child{display:inline-block;animation:spin3d 6s ease-in-out infinite;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5))}
+    @keyframes spin3d{0%,100%{transform:rotateY(-25deg) translateY(0)}50%{transform:rotateY(25deg) translateY(-6px)}}
+    .btn-primary{background:linear-gradient(180deg,#60a5fa,#2563eb);box-shadow:0 6px 0 #1e3a8a,0 14px 22px rgba(37,99,235,.35),0 1px 0 rgba(255,255,255,.35) inset}
+    .btn-primary:hover:not(:disabled){background:linear-gradient(180deg,#7db6ff,#2f6cf0);box-shadow:0 8px 0 #1e3a8a,0 18px 28px rgba(37,99,235,.5)}
+    .btn-primary:active:not(:disabled){box-shadow:0 1px 0 #1e3a8a;transform:translateY(5px)}
+
+    .preview-box{position:relative}
+    .preview-box.scanning::after{content:"";position:absolute;left:0;right:0;height:3px;top:0;z-index:3;
+      background:linear-gradient(90deg,transparent,#fbbf24,transparent);box-shadow:0 0 24px 6px rgba(251,191,36,.6);animation:sweep 1.2s ease-in-out infinite alternate}
+    .preview-box.scanning{box-shadow:0 0 0 1px rgba(251,191,36,.5),0 0 30px rgba(251,191,36,.25)}
+    @keyframes sweep{to{top:calc(100% - 3px)}}
+
+    .prob-bar-fill{transform-origin:left;animation:grow .9s cubic-bezier(.2,.8,.2,1) backwards;
+      background-image:linear-gradient(180deg,rgba(255,255,255,.35),transparent 55%);background-blend-mode:overlay;box-shadow:0 0 12px currentColor}
+    @keyframes grow{from{transform:scaleX(0)}}
+    .prob-bar-bg{box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+
+    .final-card>div{animation:flip .9s cubic-bezier(.2,.8,.2,1) backwards,verdict 3s ease-in-out .9s infinite;box-shadow:0 18px 40px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.06) inset,0 0 34px color-mix(in srgb,var(--vc,#3b82f6) 28%,transparent)}
+    @keyframes verdict{50%{box-shadow:0 22px 50px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.08) inset,0 0 56px color-mix(in srgb,var(--vc,#3b82f6) 45%,transparent)}}
+    @keyframes flip{from{opacity:0;transform:perspective(800px) rotateY(-90deg) translateZ(30px)}}
+
+    @media (prefers-reduced-motion:reduce){.glass-card,.header h1,.drop-zone>div:first-child,.final-card>div{animation:none}}
+    </style>
+
+    <!-- ================= 3D LAYER (Three.js scene + tilt + hooks) ================= -->
+    <script>
+    (function(){
+      "use strict";
+      const MOODS={idle:[0x3b82f6,1],scan:[0xf59e0b,5],bird:[0x10b981,1.6],drone:[0xef4444,2.4]};
+      let mood="idle",speed=1,spdT=1;
+      let target=null,accent=null;
+      window.__aeroMood=m=>{mood=m=MOODS[m]?m:"idle";if(target)target.setHex(MOODS[m][0]);spdT=MOODS[m][1]};
+
+      function init(){
+        target=new THREE.Color(MOODS.idle[0]);accent=target.clone();
+        const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const cv=document.createElement("canvas");cv.id="bg3d";document.body.prepend(cv);
+        const r=new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+        r.setPixelRatio(Math.min(devicePixelRatio,2));
+        const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(50,1,.1,100);cam.position.z=10;
+        sc.add(new THREE.AmbientLight(0x6688cc,.7));
+        const pl=new THREE.PointLight(0x60a5fa,2.5,50);pl.position.set(4,5,6);sc.add(pl);
+
+        const mat=new THREE.MeshStandardMaterial({color:0x1b2a44,metalness:.8,roughness:.3,emissive:accent,emissiveIntensity:.18});
+        const lm=new THREE.LineBasicMaterial({color:accent,transparent:true,opacity:.9});
+        const drone=new THREE.Group(),rotors=[];
+        const add=(parent,geo,x,y,z,ry)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.y=ry||0;
+          m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),lm));parent.add(m);return m};
+        add(drone,new THREE.BoxGeometry(1.3,.38,1.3),0,0,0);
+        add(drone,new THREE.SphereGeometry(.3,16,12),0,-.32,.55);
+        [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(([a,b])=>{
+          add(drone,new THREE.BoxGeometry(2.1,.08,.14),a*.75,0,b*.75,-Math.atan2(b,a));
+          const g=new THREE.Group();g.position.set(a*1.5,.16,b*1.5);
+          const ring=add(g,new THREE.TorusGeometry(.62,.03,8,28),0,0,0);ring.rotation.x=Math.PI/2;
+          add(g,new THREE.BoxGeometry(1.15,.02,.1),0,.02,0);
+          drone.add(g);rotors.push(g);
+        });
+        drone.scale.setScalar(.85);drone.rotation.x=.45;sc.add(drone);
+
+        const N=700,pos=new Float32Array(N*3);
+        for(let i=0;i<N;i++){pos[i*3]=(Math.random()-.5)*40;pos[i*3+1]=(Math.random()-.5)*26;pos[i*3+2]=(Math.random()-.5)*30-4}
+        const pg=new THREE.BufferGeometry();pg.setAttribute("position",new THREE.BufferAttribute(pos,3));
+        const pm=new THREE.PointsMaterial({size:.05,color:0x93c5fd,transparent:true,opacity:.7});
+        const stars=new THREE.Points(pg,pm);sc.add(stars);
+
+        const bird=new THREE.Group(),wings=[];
+        const bb=new THREE.ConeGeometry(.22,.9,6);bb.rotateX(Math.PI/2);add(bird,bb,0,0,0);
+        [1,-1].forEach(sd=>{const g=new THREE.Group();g.position.set(sd*.12,0,0);
+          add(g,new THREE.BoxGeometry(.95,.02,.38),sd*.48,0,0);bird.add(g);wings.push([g,sd])});
+        bird.scale.setScalar(.6);sc.add(bird);
+        const birdAt=a=>new THREE.Vector3(Math.cos(a)*6.5,1.6+Math.sin(a*2)*.9,Math.sin(a)*3-2);
+
+        let baseX=3.6,baseY=.5;
+        function resize(){const w=innerWidth,h=innerHeight;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();
+          const wide=w>1100;baseX=wide?4.6:0;baseY=wide?.4:3.6;drone.scale.setScalar(wide?.85:.55)}
+        addEventListener("resize",resize);resize();
+
+        const mouse={x:0,y:0};
+        addEventListener("pointermove",e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight*2-1)});
+        target.setHex(MOODS[mood][0]);
+
+        const clock=new THREE.Clock();let spin=0;
+        function frame(){
+          const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+          speed+=(spdT-speed)*.05;accent.lerp(target,.06);
+          mat.emissive.copy(accent);lm.color.copy(accent);pl.color.copy(accent);
+          spin+=dt*.35*speed;
+          drone.position.set(baseX,baseY+Math.sin(t*1.2)*.25-scrollY*.0025,0);
+          drone.rotation.y=spin;
+          drone.rotation.x+=((.45-mouse.y*.35)-drone.rotation.x)*.05;
+          drone.rotation.z+=((mouse.x*.25)-drone.rotation.z)*.05;
+          rotors.forEach((g,i)=>g.rotation.y+=dt*(14+speed*10)*(i%2?1:-1));
+          const ba=t*.35;bird.position.copy(birdAt(ba));bird.lookAt(birdAt(ba+.05));
+          wings.forEach(([g,sd])=>g.rotation.z=sd*Math.sin(t*9)*.6);
+          bird.scale.setScalar(bird.scale.x+(((mood==="bird")?1.1:.6)-bird.scale.x)*.05);
+          stars.rotation.y+=dt*.01*speed;stars.rotation.x=scrollY*.0002;
+          cam.position.x+=(mouse.x*.8-cam.position.x)*.04;cam.position.y+=(mouse.y*.5-cam.position.y)*.04;cam.lookAt(0,0,0);
+          r.render(sc,cam);
+          if(!reduce)requestAnimationFrame(frame);
+        }
+        frame();
+      }
+      const s=document.createElement("script");
+      s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+      s.onload=init;s.onerror=()=>console.warn("Three.js failed to load; 3D background skipped.");
+      document.head.appendChild(s);
+
+      const card=e=>e.target.closest&&e.target.closest(".glass-card");
+      document.addEventListener("pointermove",e=>{
+        const c=card(e);if(!c||e.pointerType==="touch")return;
+        const b=c.getBoundingClientRect(),x=(e.clientX-b.left)/b.width,y=(e.clientY-b.top)/b.height;
+        const k=c.querySelector("table")?.4:1;
+        c.style.setProperty("--ry",((x-.5)*10*k)+"deg");c.style.setProperty("--rx",((.5-y)*8*k)+"deg");
+        c.style.setProperty("--mx",x*100+"%");c.style.setProperty("--my",y*100+"%");
+      });
+      document.addEventListener("pointerout",e=>{
+        const c=card(e);if(c&&!c.contains(e.relatedTarget)){c.style.setProperty("--rx","0deg");c.style.setProperty("--ry","0deg")}
+      });
+
+      const A=window.analyzeFile,S=window.showResults;
+      if(typeof A==="function")window.analyzeFile=async function(f){
+        const pb=document.getElementById("previewBox");pb.classList.add("scanning");window.__aeroMood("scan");
+        try{await A(f)}finally{pb.classList.remove("scanning");if(mood==="scan")window.__aeroMood("idle")}
+      };
+      if(typeof S==="function")window.showResults=function(d){
+        S(d);const p=d&&d.result&&d.result.final_prediction;
+        window.__aeroMood(p==="bird"||p==="drone"?p:"idle");
+        document.getElementById("resultsPanel").scrollIntoView({behavior:"smooth",block:"start"});
+      };
+      document.getElementById("btnReset").addEventListener("click",()=>window.__aeroMood("idle"));
+    })();
+    </script>
+</body>
+</html>
